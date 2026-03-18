@@ -1,6 +1,7 @@
 # 🏓 Steph Pong
 
 A classic Pong game (Player vs AI) built with HTML5 Canvas and deployed on **Azure Static Web Apps** with full CI/CD automation via GitHub Actions.
+This project was developed using Vibe Coding with GitHub Copilot (Claude Sonnet 4.6) assisting the code generation process.
 
 ## 🎮 Play the Game
 
