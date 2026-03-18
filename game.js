@@ -4,6 +4,39 @@ const playerScoreEl = document.getElementById('player-score');
 const aiScoreEl = document.getElementById('ai-score');
 const messageEl = document.getElementById('message');
 
+// --- Audio Engine (Web Audio API — no files needed) ---
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playBeep(frequency, duration, type = 'square', volume = 0.3) {
+  try {
+    const ac = getAudioCtx();
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(frequency, ac.currentTime);
+    gain.gain.setValueAtTime(volume, ac.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + duration);
+    osc.start(ac.currentTime);
+    osc.stop(ac.currentTime + duration);
+  } catch (e) { /* audio not supported */ }
+}
+
+// Old-school Pong sounds
+const SFX = {
+  paddleHit  : () => playBeep(480, 0.04, 'square', 0.35),
+  wallBounce : () => playBeep(240, 0.04, 'square', 0.2),
+  score      : () => playBeep(120, 0.25, 'sawtooth', 0.4),
+  win        : () => { playBeep(523, 0.1, 'square', 0.4); setTimeout(() => playBeep(659, 0.1, 'square', 0.4), 120); setTimeout(() => playBeep(784, 0.2, 'square', 0.4), 240); },
+  lose       : () => { playBeep(300, 0.1, 'square', 0.4); setTimeout(() => playBeep(200, 0.3, 'sawtooth', 0.4), 120); },
+};
+
 // Constants
 const PADDLE_W = 12;
 const PADDLE_H = 80;
@@ -51,25 +84,62 @@ function init() {
   currentSpeed = 3;    // default: Medium
   currentAILevel = 'b'; // default: Normal
 
-  // Track mouse position relative to canvas
+  // Pointer Lock: track mouse movement delta while locked
+  document.addEventListener('pointerlockchange', () => {
+    if (document.pointerLockElement !== canvas && gameRunning) {
+      // Pointer lock lost unexpectedly — exit game cleanly
+      exitGame();
+    }
+  });
+
   canvas.addEventListener('mousemove', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    mouseY = e.clientY - rect.top;
+    if (document.pointerLockElement === canvas) {
+      // Use movement delta when pointer is locked
+      mouseY += e.movementY;
+      mouseY = Math.max(0, Math.min(canvas.height, mouseY));
+    } else {
+      // Fallback: absolute position before lock
+      const rect = canvas.getBoundingClientRect();
+      mouseY = e.clientY - rect.top;
+    }
   });
 
-  // Left click to start / continue / restart
+  // Click canvas to request pointer lock (required before lock can activate)
   canvas.addEventListener('click', () => {
-    if (!gameRunning) startGame();
+    if (!gameRunning && document.pointerLockElement !== canvas) {
+      canvas.requestPointerLock();
+    }
   });
 
-  // Number keys 1-5 to change speed instantly; A/B/C to change AI level
+  // Pointer lock granted — start the game
+  document.addEventListener('pointerlockchange', () => {
+    if (document.pointerLockElement === canvas && !gameRunning) {
+      startGame();
+    }
+  });
+
+  // Keyboard: SPACE = start/continue, ESC = exit, 1-5 = speed, A/B/C = AI level
   document.addEventListener('keydown', (e) => {
+    if (e.code === 'Escape') {
+      exitGame();
+      return;
+    }
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (!gameRunning) {
+        if (document.pointerLockElement !== canvas) {
+          canvas.requestPointerLock();
+        } else {
+          startGame();
+        }
+      }
+      return;
+    }
     const level = parseInt(e.key);
     if (level >= 1 && level <= 5) {
       const prevInit = SPEED_LEVELS[currentSpeed].init;
       currentSpeed = level;
       updateSpeedIndicator();
-      // Rescale current ball velocity proportionally to new speed
       if (ball && (ball.vx !== 0 || ball.vy !== 0)) {
         const currentMag = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
         if (currentMag > 0) {
@@ -88,14 +158,14 @@ function init() {
     }
   });
 
-  // Change cursor to pointer over canvas
+  // Change cursor to none over canvas
   canvas.style.cursor = 'none';
 
   spawnBall('player');
   updateSpeedIndicator();
   updateAIIndicator();
   drawFrame();
-  showMessage('Click to start');
+  showMessage('Click or press SPACE to start');
 }
 
 function spawnBall(serveToward) {
@@ -123,7 +193,6 @@ function updateAIIndicator() {
 
 function startGame() {
   if (score.player >= WINNING_SCORE || score.ai >= WINNING_SCORE) {
-    // Restart full game
     score = { player: 0, ai: 0 };
     updateScoreboard();
     spawnBall('player');
@@ -132,6 +201,18 @@ function startGame() {
   gameRunning = true;
   if (animationId) cancelAnimationFrame(animationId);
   loop();
+}
+
+function exitGame() {
+  gameRunning = false;
+  if (animationId) cancelAnimationFrame(animationId);
+  // Release pointer lock so mouse returns to desktop
+  if (document.pointerLockElement === canvas) document.exitPointerLock();
+  score = { player: 0, ai: 0 };
+  updateScoreboard();
+  spawnBall('player');
+  drawFrame();
+  showMessage('Click or press SPACE to start');
 }
 
 function showMessage(text) {
@@ -211,10 +292,12 @@ function updateBall() {
   if (ball.y - BALL_SIZE / 2 <= 0) {
     ball.y = BALL_SIZE / 2;
     ball.vy = Math.abs(ball.vy);
+    SFX.wallBounce();
   }
   if (ball.y + BALL_SIZE / 2 >= canvas.height) {
     ball.y = canvas.height - BALL_SIZE / 2;
     ball.vy = -Math.abs(ball.vy);
+    SFX.wallBounce();
   }
 
   // Player paddle collision (standard + sweep for tunneling)
@@ -226,6 +309,7 @@ function updateBall() {
     ball.vy = hitPos * 7;
     ball.vx = clampSpeed(ball.vx, maxSpeed);
     ball.vy = clampSpeed(ball.vy, maxSpeed);
+    SFX.paddleHit();
   }
 
   // AI paddle collision (standard + sweep for tunneling)
@@ -237,12 +321,14 @@ function updateBall() {
     ball.vy = hitPos * 7;
     ball.vx = clampSpeed(ball.vx, maxSpeed);
     ball.vy = clampSpeed(ball.vy, maxSpeed);
+    SFX.paddleHit();
   }
 
   // Scoring — ball leaves left side
   if (ball.x < 0) {
     score.ai++;
     updateScoreboard();
+    SFX.score();
     checkWin('ai') || pauseAndServe('player');
   }
 
@@ -250,6 +336,7 @@ function updateBall() {
   if (ball.x > canvas.width) {
     score.player++;
     updateScoreboard();
+    SFX.score();
     checkWin('player') || pauseAndServe('ai');
   }
 }
@@ -257,8 +344,10 @@ function updateBall() {
 function checkWin(winner) {
   if (score[winner] >= WINNING_SCORE) {
     gameRunning = false;
+    if (document.pointerLockElement === canvas) document.exitPointerLock();
     const msg = winner === 'player' ? 'YOU WIN! 🎉' : 'AI WINS!';
-    showMessage(`${msg}  —  Click to play again`);
+    winner === 'player' ? SFX.win() : SFX.lose();
+    showMessage(`${msg}  —  Click or SPACE to play again`);
     return true;
   }
   return false;
@@ -268,7 +357,7 @@ function pauseAndServe(serveToward) {
   gameRunning = false;
   spawnBall(serveToward);
   drawFrame();
-  showMessage('Click to continue');
+  showMessage('Press SPACE to continue  —  ESC to exit');
 }
 
 function drawFrame() {
