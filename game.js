@@ -11,17 +11,24 @@ const BALL_SIZE = 10;
 const PADDLE_SPEED = 6;
 const WINNING_SCORE = 7;
 
-// Speed levels: [ballSpeed, maxBallSpeed, aiSpeed, label]
+// Speed levels: [ballSpeed, maxBallSpeed, label]
 const SPEED_LEVELS = {
-  1: { init: 3,  max: 8,  ai: 2.5, label: 'Very Slow' },
-  2: { init: 4,  max: 10, ai: 3.5, label: 'Slow'      },
-  3: { init: 5,  max: 14, ai: 4.0, label: 'Medium'    },
-  4: { init: 7,  max: 18, ai: 5.5, label: 'Fast'      },
-  5: { init: 10, max: 22, ai: 7.5, label: 'Very Fast' },
+  1: { init: 3,  max: 8,  label: 'Very Slow' },
+  2: { init: 4,  max: 10, label: 'Slow'      },
+  3: { init: 5,  max: 14, label: 'Medium'    },
+  4: { init: 7,  max: 18, label: 'Fast'      },
+  5: { init: 10, max: 22, label: 'Very Fast' },
+};
+
+// AI levels: speedMultiplier (applied to ball speed), deadzone, label
+const AI_LEVELS = {
+  a: { multiplier: 0.55, deadzone: 20, label: 'Beginner'     },
+  b: { multiplier: 0.80, deadzone: 8,  label: 'Normal'       },
+  c: { multiplier: 1.10, deadzone: 2,  label: 'Professional' },
 };
 
 // Game state
-let ball, playerPaddle, aiPaddle, score, mouseY, gameRunning, animationId, currentSpeed;
+let ball, playerPaddle, aiPaddle, score, mouseY, gameRunning, animationId, currentSpeed, currentAILevel;
 
 function init() {
   playerPaddle = {
@@ -41,7 +48,8 @@ function init() {
   score = { player: 0, ai: 0 };
   mouseY = canvas.height / 2;
   gameRunning = false;
-  currentSpeed = 3; // default: Medium
+  currentSpeed = 3;    // default: Medium
+  currentAILevel = 'b'; // default: Normal
 
   // Track mouse position relative to canvas
   canvas.addEventListener('mousemove', (e) => {
@@ -54,7 +62,7 @@ function init() {
     if (!gameRunning) startGame();
   });
 
-  // Number keys 1-5 to change speed instantly
+  // Number keys 1-5 to change speed instantly; A/B/C to change AI level
   document.addEventListener('keydown', (e) => {
     const level = parseInt(e.key);
     if (level >= 1 && level <= 5) {
@@ -73,6 +81,11 @@ function init() {
         }
       }
     }
+    const key = e.key.toLowerCase();
+    if (key === 'a' || key === 'b' || key === 'c') {
+      currentAILevel = key;
+      updateAIIndicator();
+    }
   });
 
   // Change cursor to pointer over canvas
@@ -80,6 +93,7 @@ function init() {
 
   spawnBall('player');
   updateSpeedIndicator();
+  updateAIIndicator();
   drawFrame();
   showMessage('Click to start');
 }
@@ -99,6 +113,12 @@ function spawnBall(serveToward) {
 function updateSpeedIndicator() {
   const el = document.getElementById('speed-indicator');
   if (el) el.textContent = `Speed: ${currentSpeed} — ${SPEED_LEVELS[currentSpeed].label}`;
+}
+
+function updateAIIndicator() {
+  const el = document.getElementById('ai-indicator');
+  const lvl = AI_LEVELS[currentAILevel];
+  if (el) el.textContent = `AI: ${currentAILevel.toUpperCase()} — ${lvl.label}`;
 }
 
 function startGame() {
@@ -136,11 +156,11 @@ function updatePlayer() {
 
 function updateAI() {
   const paddleCenter = aiPaddle.y + PADDLE_H / 2;
-  const deadzone = 8;
-  const aiSpeed = SPEED_LEVELS[currentSpeed].ai;
-  if (paddleCenter < ball.y - deadzone && aiPaddle.y + PADDLE_H < canvas.height) {
+  const lvl = AI_LEVELS[currentAILevel];
+  const aiSpeed = SPEED_LEVELS[currentSpeed].init * lvl.multiplier;
+  if (paddleCenter < ball.y - lvl.deadzone && aiPaddle.y + PADDLE_H < canvas.height) {
     aiPaddle.y += aiSpeed;
-  } else if (paddleCenter > ball.y + deadzone && aiPaddle.y > 0) {
+  } else if (paddleCenter > ball.y + lvl.deadzone && aiPaddle.y > 0) {
     aiPaddle.y -= aiSpeed;
   }
 }

@@ -73,8 +73,20 @@ canvas {
   color: #aaa;
 }
 
+.indicators {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+}
+
 .speed {
   font-size: 0.85rem;
   color: #4af;
+  letter-spacing: 0.15rem;
+}
+
+.ai-level {
+  font-size: 0.85rem;
+  color: #fa4;
   letter-spacing: 0.15rem;
 }
