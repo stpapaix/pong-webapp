@@ -84,25 +84,62 @@ function init() {
   currentSpeed = 3;    // default: Medium
   currentAILevel = 'b'; // default: Normal
 
-  // Track mouse position relative to canvas
+  // Pointer Lock: track mouse movement delta while locked
+  document.addEventListener('pointerlockchange', () => {
+    if (document.pointerLockElement !== canvas && gameRunning) {
+      // Pointer lock lost unexpectedly — exit game cleanly
+      exitGame();
+    }
+  });
+
   canvas.addEventListener('mousemove', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    mouseY = e.clientY - rect.top;
+    if (document.pointerLockElement === canvas) {
+      // Use movement delta when pointer is locked
+      mouseY += e.movementY;
+      mouseY = Math.max(0, Math.min(canvas.height, mouseY));
+    } else {
+      // Fallback: absolute position before lock
+      const rect = canvas.getBoundingClientRect();
+      mouseY = e.clientY - rect.top;
+    }
   });
 
-  // Left click to start / continue / restart
+  // Click canvas to request pointer lock (required before lock can activate)
   canvas.addEventListener('click', () => {
-    if (!gameRunning) startGame();
+    if (!gameRunning && document.pointerLockElement !== canvas) {
+      canvas.requestPointerLock();
+    }
   });
 
-  // Number keys 1-5 to change speed instantly; A/B/C to change AI level
+  // Pointer lock granted — start the game
+  document.addEventListener('pointerlockchange', () => {
+    if (document.pointerLockElement === canvas && !gameRunning) {
+      startGame();
+    }
+  });
+
+  // Keyboard: SPACE = start/continue, ESC = exit, 1-5 = speed, A/B/C = AI level
   document.addEventListener('keydown', (e) => {
+    if (e.code === 'Escape') {
+      exitGame();
+      return;
+    }
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (!gameRunning) {
+        if (document.pointerLockElement !== canvas) {
+          canvas.requestPointerLock();
+        } else {
+          startGame();
+        }
+      }
+      return;
+    }
     const level = parseInt(e.key);
     if (level >= 1 && level <= 5) {
       const prevInit = SPEED_LEVELS[currentSpeed].init;
       currentSpeed = level;
       updateSpeedIndicator();
-      // Rescale current ball velocity proportionally to new speed
       if (ball && (ball.vx !== 0 || ball.vy !== 0)) {
         const currentMag = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
         if (currentMag > 0) {
@@ -121,14 +158,14 @@ function init() {
     }
   });
 
-  // Change cursor to pointer over canvas
+  // Change cursor to none over canvas
   canvas.style.cursor = 'none';
 
   spawnBall('player');
   updateSpeedIndicator();
   updateAIIndicator();
   drawFrame();
-  showMessage('Click to start');
+  showMessage('Click or press SPACE to start');
 }
 
 function spawnBall(serveToward) {
@@ -156,7 +193,6 @@ function updateAIIndicator() {
 
 function startGame() {
   if (score.player >= WINNING_SCORE || score.ai >= WINNING_SCORE) {
-    // Restart full game
     score = { player: 0, ai: 0 };
     updateScoreboard();
     spawnBall('player');
@@ -165,6 +201,18 @@ function startGame() {
   gameRunning = true;
   if (animationId) cancelAnimationFrame(animationId);
   loop();
+}
+
+function exitGame() {
+  gameRunning = false;
+  if (animationId) cancelAnimationFrame(animationId);
+  // Release pointer lock so mouse returns to desktop
+  if (document.pointerLockElement === canvas) document.exitPointerLock();
+  score = { player: 0, ai: 0 };
+  updateScoreboard();
+  spawnBall('player');
+  drawFrame();
+  showMessage('Click or press SPACE to start');
 }
 
 function showMessage(text) {
@@ -296,9 +344,10 @@ function updateBall() {
 function checkWin(winner) {
   if (score[winner] >= WINNING_SCORE) {
     gameRunning = false;
+    if (document.pointerLockElement === canvas) document.exitPointerLock();
     const msg = winner === 'player' ? 'YOU WIN! 🎉' : 'AI WINS!';
     winner === 'player' ? SFX.win() : SFX.lose();
-    showMessage(`${msg}  —  Click to play again`);
+    showMessage(`${msg}  —  Click or SPACE to play again`);
     return true;
   }
   return false;
@@ -308,7 +357,7 @@ function pauseAndServe(serveToward) {
   gameRunning = false;
   spawnBall(serveToward);
   drawFrame();
-  showMessage('Click to continue');
+  showMessage('Press SPACE to continue  —  ESC to exit');
 }
 
 function drawFrame() {
