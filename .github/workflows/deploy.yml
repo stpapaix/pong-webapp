@@ -4,11 +4,16 @@ on:
   push:
     branches:
       - main
+      - dev
   workflow_dispatch:
+
+env:
+  APP_NAME: ${{ github.ref_name == 'main' && 'pong-webapp' || 'pong-webapp-dev' }}
+  RESOURCE_GROUP: ${{ github.ref_name == 'main' && 'rg-pong-webapp' || 'rg-pong-webapp-dev' }}
 
 jobs:
   provision:
-    name: Provision Azure Infrastructure
+    name: Provision Azure Infrastructure (${{ github.ref_name }})
     runs-on: ubuntu-latest
     outputs:
       swa_name: ${{ steps.deploy_bicep.outputs.staticWebAppName }}
@@ -25,16 +30,16 @@ jobs:
       - name: Create Resource Group
         run: |
           az group create \
-            --name rg-pong-webapp \
+            --name ${{ env.RESOURCE_GROUP }} \
             --location eastus2
 
       - name: Deploy Bicep template
         id: deploy_bicep
         run: |
           OUTPUT=$(az deployment group create \
-            --resource-group rg-pong-webapp \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
-            --parameters appName=pong-webapp \
+            --parameters appName=${{ env.APP_NAME }} \
             --query "properties.outputs" \
             --output json)
 
@@ -43,10 +48,10 @@ jobs:
 
           echo "staticWebAppName=$SWA_NAME" >> $GITHUB_OUTPUT
           echo "staticWebAppUrl=$SWA_URL"
-          echo "### Deployed to: $SWA_URL" >> $GITHUB_STEP_SUMMARY
+          echo "### [${{ github.ref_name }}] Deployed to: $SWA_URL" >> $GITHUB_STEP_SUMMARY
 
   deploy:
-    name: Deploy App to Static Web App
+    name: Deploy App to Static Web App (${{ github.ref_name }})
     runs-on: ubuntu-latest
     needs: provision
 
@@ -63,8 +68,8 @@ jobs:
         id: get_token
         run: |
           TOKEN=$(az staticwebapp secrets list \
-            --name pong-webapp \
-            --resource-group rg-pong-webapp \
+            --name ${{ env.APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
             --query "properties.apiKey" \
             --output tsv)
           echo "swa_token=$TOKEN" >> $GITHUB_OUTPUT
