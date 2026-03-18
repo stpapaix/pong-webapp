@@ -15,7 +15,7 @@ const MAX_BALL_SPEED = 14;
 const WINNING_SCORE = 7;
 
 // Game state
-let ball, playerPaddle, aiPaddle, score, keys, gameRunning, animationId;
+let ball, playerPaddle, aiPaddle, score, mouseY, gameRunning, animationId;
 
 function init() {
   playerPaddle = {
@@ -33,21 +33,26 @@ function init() {
   };
 
   score = { player: 0, ai: 0 };
-  keys = {};
+  mouseY = canvas.height / 2;
   gameRunning = false;
 
-  document.addEventListener('keydown', (e) => {
-    keys[e.key] = true;
-    // Start game on any key press if not running
+  // Track mouse position relative to canvas
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    mouseY = e.clientY - rect.top;
+  });
+
+  // Left click to start / continue / restart
+  canvas.addEventListener('click', () => {
     if (!gameRunning) startGame();
   });
-  document.addEventListener('keyup', (e) => {
-    keys[e.key] = false;
-  });
+
+  // Change cursor to pointer over canvas
+  canvas.style.cursor = 'none';
 
   spawnBall('player');
   drawFrame();
-  showMessage('Press any key to start');
+  showMessage('Click to start');
 }
 
 function spawnBall(serveToward) {
@@ -89,12 +94,9 @@ function updateScoreboard() {
 }
 
 function updatePlayer() {
-  if (keys['ArrowUp'] && playerPaddle.y > 0) {
-    playerPaddle.y -= PADDLE_SPEED;
-  }
-  if (keys['ArrowDown'] && playerPaddle.y + PADDLE_H < canvas.height) {
-    playerPaddle.y += PADDLE_SPEED;
-  }
+  // Center paddle on mouse position, clamped within canvas
+  const targetY = mouseY - PADDLE_H / 2;
+  playerPaddle.y = Math.max(0, Math.min(canvas.height - PADDLE_H, targetY));
 }
 
 function updateAI() {
@@ -174,7 +176,7 @@ function checkWin(winner) {
   if (score[winner] >= WINNING_SCORE) {
     gameRunning = false;
     const msg = winner === 'player' ? 'YOU WIN! 🎉' : 'AI WINS!';
-    showMessage(`${msg}  —  Press any key to play again`);
+    showMessage(`${msg}  —  Click to play again`);
     return true;
   }
   return false;
@@ -184,7 +186,7 @@ function pauseAndServe(serveToward) {
   gameRunning = false;
   spawnBall(serveToward);
   drawFrame();
-  showMessage('Press any key to continue');
+  showMessage('Click to continue');
 }
 
 function drawFrame() {
