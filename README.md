@@ -11,9 +11,10 @@ This project was developed using Vibe Coding with GitHub Copilot (Claude Sonnet 
 
 | Input | Action |
 |-------|--------|
-| Mouse move | Control your paddle |
-| Left click | Start / continue / restart |
-| `1` – `5` | Change ball speed |
+| Mouse move | Control your paddle (captured by game during play) |
+| Click / `SPACE` | Start / continue / restart |
+| `ESC` | Exit game and release mouse |
+| `1` – `5` | Change ball speed (applied instantly, even mid-game) |
 | `A` | AI level: Beginner |
 | `B` | AI level: Normal (default) |
 | `C` | AI level: Professional |
@@ -22,6 +23,7 @@ This project was developed using Vibe Coding with GitHub Copilot (Claude Sonnet 
 - The AI is the **red paddle** (right side)
 - First to **7 points** wins
 - Ball speeds up on every paddle hit (capped per speed level)
+- Current speed and AI level are displayed below the canvas
 
 ## Tech Stack
 
@@ -52,12 +54,14 @@ pong-webapp/
 
 ### Game Logic (`game.js`)
 - **Game loop** powered by `requestAnimationFrame`
-- **Mouse control**: paddle follows the mouse cursor in real time; left click to start
-- **Ball physics**: bounces off walls, accelerates on each paddle hit (capped at max speed)
+- **Mouse control with Pointer Lock**: mouse is captured by the game on start — no risk of losing control when cursor leaves the window. Released automatically on game end or `ESC`
+- **SPACE / click** to start or continue; **ESC** to exit and return mouse to desktop
+- **Ball physics**: bounces off walls, accelerates on each paddle hit (capped at max speed per level)
 - **Angle control**: hit position on paddle affects the ball's rebound angle
 - **CCD (Continuous Collision Detection)**: prevents ball from tunneling through paddles at high speed
-- **5 ball speed levels** (keys `1`–`5`): from Very Slow to Very Fast, applied instantly including mid-game
-- **3 AI difficulty levels** (keys `A`/`B`/`C`): Beginner, Normal, Professional — AI speed and reaction deadzone scale accordingly
+- **5 ball speed levels** (keys `1`–`5`): Very Slow to Very Fast, applied instantly including mid-game
+- **3 AI difficulty levels** (keys `A`/`B`/`C`): Beginner, Normal, Professional — AI speed and reaction deadzone scale with ball speed
+- **Retro sound effects** (Web Audio API — no audio files): paddle hit, wall bounce, score, win/lose jingles
 - **Scoring**: first to 7 points wins
 
 ### Infrastructure (`infra/main.bicep`)
