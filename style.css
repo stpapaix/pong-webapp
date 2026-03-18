@@ -72,3 +72,9 @@ canvas {
 .hint strong {
   color: #aaa;
 }
+
+.speed {
+  font-size: 0.85rem;
+  color: #4af;
+  letter-spacing: 0.15rem;
+}

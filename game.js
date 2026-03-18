@@ -9,13 +9,19 @@ const PADDLE_W = 12;
 const PADDLE_H = 80;
 const BALL_SIZE = 10;
 const PADDLE_SPEED = 6;
-const AI_SPEED = 4;
-const BALL_SPEED_INIT = 5;
-const MAX_BALL_SPEED = 14;
 const WINNING_SCORE = 7;
 
+// Speed levels: [ballSpeed, maxBallSpeed, aiSpeed, label]
+const SPEED_LEVELS = {
+  1: { init: 3,  max: 8,  ai: 2.5, label: 'Very Slow' },
+  2: { init: 4,  max: 10, ai: 3.5, label: 'Slow'      },
+  3: { init: 5,  max: 14, ai: 4.0, label: 'Medium'    },
+  4: { init: 7,  max: 18, ai: 5.5, label: 'Fast'      },
+  5: { init: 10, max: 22, ai: 7.5, label: 'Very Fast' },
+};
+
 // Game state
-let ball, playerPaddle, aiPaddle, score, mouseY, gameRunning, animationId;
+let ball, playerPaddle, aiPaddle, score, mouseY, gameRunning, animationId, currentSpeed;
 
 function init() {
   playerPaddle = {
@@ -35,6 +41,7 @@ function init() {
   score = { player: 0, ai: 0 };
   mouseY = canvas.height / 2;
   gameRunning = false;
+  currentSpeed = 3; // default: Medium
 
   // Track mouse position relative to canvas
   canvas.addEventListener('mousemove', (e) => {
@@ -47,23 +54,39 @@ function init() {
     if (!gameRunning) startGame();
   });
 
+  // Number keys 1-5 to change speed
+  document.addEventListener('keydown', (e) => {
+    const level = parseInt(e.key);
+    if (level >= 1 && level <= 5) {
+      currentSpeed = level;
+      updateSpeedIndicator();
+    }
+  });
+
   // Change cursor to pointer over canvas
   canvas.style.cursor = 'none';
 
   spawnBall('player');
+  updateSpeedIndicator();
   drawFrame();
   showMessage('Click to start');
 }
 
 function spawnBall(serveToward) {
   const dir = serveToward === 'ai' ? 1 : -1;
-  const angle = (Math.random() * 0.6 - 0.3); // radians, slight variance
+  const angle = (Math.random() * 0.6 - 0.3);
+  const speed = SPEED_LEVELS[currentSpeed].init;
   ball = {
     x: canvas.width / 2,
     y: canvas.height / 2,
-    vx: dir * BALL_SPEED_INIT * Math.cos(angle),
-    vy: BALL_SPEED_INIT * Math.sin(angle) + (Math.random() > 0.5 ? 1 : -1) * 2,
+    vx: dir * speed * Math.cos(angle),
+    vy: speed * Math.sin(angle) + (Math.random() > 0.5 ? 1 : -1) * 2,
   };
+}
+
+function updateSpeedIndicator() {
+  const el = document.getElementById('speed-indicator');
+  if (el) el.textContent = `Speed: ${currentSpeed} — ${SPEED_LEVELS[currentSpeed].label}`;
 }
 
 function startGame() {
@@ -101,12 +124,12 @@ function updatePlayer() {
 
 function updateAI() {
   const paddleCenter = aiPaddle.y + PADDLE_H / 2;
-  // AI tracks the ball with a small deadzone to feel beatable
   const deadzone = 8;
+  const aiSpeed = SPEED_LEVELS[currentSpeed].ai;
   if (paddleCenter < ball.y - deadzone && aiPaddle.y + PADDLE_H < canvas.height) {
-    aiPaddle.y += AI_SPEED;
+    aiPaddle.y += aiSpeed;
   } else if (paddleCenter > ball.y + deadzone && aiPaddle.y > 0) {
-    aiPaddle.y -= AI_SPEED;
+    aiPaddle.y -= aiSpeed;
   }
 }
 
@@ -139,22 +162,24 @@ function updateBall() {
 
   // Player paddle collision
   if (collidesWithPaddle(playerPaddle) && ball.vx < 0) {
+    const maxSpeed = SPEED_LEVELS[currentSpeed].max;
     ball.x = playerPaddle.x + PADDLE_W + BALL_SIZE / 2;
-    const hitPos = (ball.y - (playerPaddle.y + PADDLE_H / 2)) / (PADDLE_H / 2); // -1 to 1
+    const hitPos = (ball.y - (playerPaddle.y + PADDLE_H / 2)) / (PADDLE_H / 2);
     ball.vx = Math.abs(ball.vx) * 1.05;
     ball.vy = hitPos * 7;
-    ball.vx = clampSpeed(ball.vx, MAX_BALL_SPEED);
-    ball.vy = clampSpeed(ball.vy, MAX_BALL_SPEED);
+    ball.vx = clampSpeed(ball.vx, maxSpeed);
+    ball.vy = clampSpeed(ball.vy, maxSpeed);
   }
 
   // AI paddle collision
   if (collidesWithPaddle(aiPaddle) && ball.vx > 0) {
+    const maxSpeed = SPEED_LEVELS[currentSpeed].max;
     ball.x = aiPaddle.x - BALL_SIZE / 2;
     const hitPos = (ball.y - (aiPaddle.y + PADDLE_H / 2)) / (PADDLE_H / 2);
     ball.vx = -Math.abs(ball.vx) * 1.05;
     ball.vy = hitPos * 7;
-    ball.vx = clampSpeed(ball.vx, MAX_BALL_SPEED);
-    ball.vy = clampSpeed(ball.vy, MAX_BALL_SPEED);
+    ball.vx = clampSpeed(ball.vx, maxSpeed);
+    ball.vy = clampSpeed(ball.vy, maxSpeed);
   }
 
   // Scoring — ball leaves left side
