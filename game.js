@@ -169,6 +169,28 @@ function clampSpeed(val, max) {
   return Math.sign(val) * Math.min(Math.abs(val), max);
 }
 
+// Continuous collision detection: check if ball swept through a paddle this frame
+function sweepPaddle(paddle, prevX, prevY) {
+  // Vertical overlap check uses interpolated Y position at the paddle's X boundary
+  const halfBall = BALL_SIZE / 2;
+
+  // Determine the X edge of the paddle the ball approaches
+  const edgeX = ball.vx < 0 ? paddle.x + paddle.w : paddle.x;
+
+  // Check if ball crossed the edge X during this frame
+  const crossedEdge = ball.vx < 0
+    ? prevX - halfBall >= edgeX && ball.x - halfBall <= edgeX
+    : prevX + halfBall <= edgeX && ball.x + halfBall >= edgeX;
+
+  if (!crossedEdge) return false;
+
+  // Interpolate Y at crossing point
+  const t = (edgeX - (ball.vx < 0 ? prevX - halfBall : prevX + halfBall)) / ball.vx;
+  const interpY = prevY + ball.vy * t;
+
+  return interpY + halfBall > paddle.y && interpY - halfBall < paddle.y + paddle.h;
+}
+
 function collidesWithPaddle(paddle) {
   return (
     ball.x - BALL_SIZE / 2 < paddle.x + paddle.w &&
@@ -179,6 +201,9 @@ function collidesWithPaddle(paddle) {
 }
 
 function updateBall() {
+  const prevX = ball.x;
+  const prevY = ball.y;
+
   ball.x += ball.vx;
   ball.y += ball.vy;
 
@@ -192,8 +217,8 @@ function updateBall() {
     ball.vy = -Math.abs(ball.vy);
   }
 
-  // Player paddle collision
-  if (collidesWithPaddle(playerPaddle) && ball.vx < 0) {
+  // Player paddle collision (standard + sweep for tunneling)
+  if (ball.vx < 0 && (collidesWithPaddle(playerPaddle) || sweepPaddle(playerPaddle, prevX, prevY))) {
     const maxSpeed = SPEED_LEVELS[currentSpeed].max;
     ball.x = playerPaddle.x + PADDLE_W + BALL_SIZE / 2;
     const hitPos = (ball.y - (playerPaddle.y + PADDLE_H / 2)) / (PADDLE_H / 2);
@@ -203,8 +228,8 @@ function updateBall() {
     ball.vy = clampSpeed(ball.vy, maxSpeed);
   }
 
-  // AI paddle collision
-  if (collidesWithPaddle(aiPaddle) && ball.vx > 0) {
+  // AI paddle collision (standard + sweep for tunneling)
+  if (ball.vx > 0 && (collidesWithPaddle(aiPaddle) || sweepPaddle(aiPaddle, prevX, prevY))) {
     const maxSpeed = SPEED_LEVELS[currentSpeed].max;
     ball.x = aiPaddle.x - BALL_SIZE / 2;
     const hitPos = (ball.y - (aiPaddle.y + PADDLE_H / 2)) / (PADDLE_H / 2);
