@@ -54,12 +54,24 @@ function init() {
     if (!gameRunning) startGame();
   });
 
-  // Number keys 1-5 to change speed
+  // Number keys 1-5 to change speed instantly
   document.addEventListener('keydown', (e) => {
     const level = parseInt(e.key);
     if (level >= 1 && level <= 5) {
+      const prevInit = SPEED_LEVELS[currentSpeed].init;
       currentSpeed = level;
       updateSpeedIndicator();
+      // Rescale current ball velocity proportionally to new speed
+      if (ball && (ball.vx !== 0 || ball.vy !== 0)) {
+        const currentMag = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+        if (currentMag > 0) {
+          const newInit = SPEED_LEVELS[currentSpeed].init;
+          const scale = newInit / prevInit;
+          const maxSpeed = SPEED_LEVELS[currentSpeed].max;
+          ball.vx = clampSpeed(ball.vx * scale, maxSpeed);
+          ball.vy = clampSpeed(ball.vy * scale, maxSpeed);
+        }
+      }
     }
   });
 
