@@ -34,11 +34,7 @@ jobs:
           OUTPUT=$(az deployment group create \
             --resource-group rg-pong-webapp \
             --template-file infra/main.bicep \
-            --parameters \
-                appName=pong-webapp \
-                repositoryUrl=https://github.com/${{ github.repository }} \
-                branch=main \
-                repositoryToken=${{ secrets.REPO_TOKEN }} \
+            --parameters appName=pong-webapp \
             --query "properties.outputs" \
             --output json)
 
