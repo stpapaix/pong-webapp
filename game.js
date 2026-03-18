@@ -4,6 +4,39 @@ const playerScoreEl = document.getElementById('player-score');
 const aiScoreEl = document.getElementById('ai-score');
 const messageEl = document.getElementById('message');
 
+// --- Audio Engine (Web Audio API — no files needed) ---
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playBeep(frequency, duration, type = 'square', volume = 0.3) {
+  try {
+    const ac = getAudioCtx();
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(frequency, ac.currentTime);
+    gain.gain.setValueAtTime(volume, ac.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + duration);
+    osc.start(ac.currentTime);
+    osc.stop(ac.currentTime + duration);
+  } catch (e) { /* audio not supported */ }
+}
+
+// Old-school Pong sounds
+const SFX = {
+  paddleHit  : () => playBeep(480, 0.04, 'square', 0.35),
+  wallBounce : () => playBeep(240, 0.04, 'square', 0.2),
+  score      : () => playBeep(120, 0.25, 'sawtooth', 0.4),
+  win        : () => { playBeep(523, 0.1, 'square', 0.4); setTimeout(() => playBeep(659, 0.1, 'square', 0.4), 120); setTimeout(() => playBeep(784, 0.2, 'square', 0.4), 240); },
+  lose       : () => { playBeep(300, 0.1, 'square', 0.4); setTimeout(() => playBeep(200, 0.3, 'sawtooth', 0.4), 120); },
+};
+
 // Constants
 const PADDLE_W = 12;
 const PADDLE_H = 80;
@@ -211,10 +244,12 @@ function updateBall() {
   if (ball.y - BALL_SIZE / 2 <= 0) {
     ball.y = BALL_SIZE / 2;
     ball.vy = Math.abs(ball.vy);
+    SFX.wallBounce();
   }
   if (ball.y + BALL_SIZE / 2 >= canvas.height) {
     ball.y = canvas.height - BALL_SIZE / 2;
     ball.vy = -Math.abs(ball.vy);
+    SFX.wallBounce();
   }
 
   // Player paddle collision (standard + sweep for tunneling)
@@ -226,6 +261,7 @@ function updateBall() {
     ball.vy = hitPos * 7;
     ball.vx = clampSpeed(ball.vx, maxSpeed);
     ball.vy = clampSpeed(ball.vy, maxSpeed);
+    SFX.paddleHit();
   }
 
   // AI paddle collision (standard + sweep for tunneling)
@@ -237,12 +273,14 @@ function updateBall() {
     ball.vy = hitPos * 7;
     ball.vx = clampSpeed(ball.vx, maxSpeed);
     ball.vy = clampSpeed(ball.vy, maxSpeed);
+    SFX.paddleHit();
   }
 
   // Scoring — ball leaves left side
   if (ball.x < 0) {
     score.ai++;
     updateScoreboard();
+    SFX.score();
     checkWin('ai') || pauseAndServe('player');
   }
 
@@ -250,6 +288,7 @@ function updateBall() {
   if (ball.x > canvas.width) {
     score.player++;
     updateScoreboard();
+    SFX.score();
     checkWin('player') || pauseAndServe('ai');
   }
 }
@@ -258,6 +297,7 @@ function checkWin(winner) {
   if (score[winner] >= WINNING_SCORE) {
     gameRunning = false;
     const msg = winner === 'player' ? 'YOU WIN! 🎉' : 'AI WINS!';
+    winner === 'player' ? SFX.win() : SFX.lose();
     showMessage(`${msg}  —  Click to play again`);
     return true;
   }
