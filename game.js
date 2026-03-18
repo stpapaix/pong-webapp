@@ -9,13 +9,26 @@ const PADDLE_W = 12;
 const PADDLE_H = 80;
 const BALL_SIZE = 10;
 const PADDLE_SPEED = 6;
-const AI_SPEED = 4;
-const BALL_SPEED_INIT = 5;
-const MAX_BALL_SPEED = 14;
 const WINNING_SCORE = 7;
 
+// Speed levels: [ballSpeed, maxBallSpeed, label]
+const SPEED_LEVELS = {
+  1: { init: 3,  max: 8,  label: 'Very Slow' },
+  2: { init: 4,  max: 10, label: 'Slow'      },
+  3: { init: 5,  max: 14, label: 'Medium'    },
+  4: { init: 7,  max: 18, label: 'Fast'      },
+  5: { init: 10, max: 22, label: 'Very Fast' },
+};
+
+// AI levels: speedMultiplier (applied to ball speed), deadzone, label
+const AI_LEVELS = {
+  a: { multiplier: 0.55, deadzone: 20, label: 'Beginner'     },
+  b: { multiplier: 0.80, deadzone: 8,  label: 'Normal'       },
+  c: { multiplier: 1.10, deadzone: 2,  label: 'Professional' },
+};
+
 // Game state
-let ball, playerPaddle, aiPaddle, score, keys, gameRunning, animationId;
+let ball, playerPaddle, aiPaddle, score, mouseY, gameRunning, animationId, currentSpeed, currentAILevel;
 
 function init() {
   playerPaddle = {
@@ -33,32 +46,79 @@ function init() {
   };
 
   score = { player: 0, ai: 0 };
-  keys = {};
+  mouseY = canvas.height / 2;
   gameRunning = false;
+  currentSpeed = 3;    // default: Medium
+  currentAILevel = 'b'; // default: Normal
 
-  document.addEventListener('keydown', (e) => {
-    keys[e.key] = true;
-    // Start game on any key press if not running
+  // Track mouse position relative to canvas
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    mouseY = e.clientY - rect.top;
+  });
+
+  // Left click to start / continue / restart
+  canvas.addEventListener('click', () => {
     if (!gameRunning) startGame();
   });
-  document.addEventListener('keyup', (e) => {
-    keys[e.key] = false;
+
+  // Number keys 1-5 to change speed instantly; A/B/C to change AI level
+  document.addEventListener('keydown', (e) => {
+    const level = parseInt(e.key);
+    if (level >= 1 && level <= 5) {
+      const prevInit = SPEED_LEVELS[currentSpeed].init;
+      currentSpeed = level;
+      updateSpeedIndicator();
+      // Rescale current ball velocity proportionally to new speed
+      if (ball && (ball.vx !== 0 || ball.vy !== 0)) {
+        const currentMag = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+        if (currentMag > 0) {
+          const newInit = SPEED_LEVELS[currentSpeed].init;
+          const scale = newInit / prevInit;
+          const maxSpeed = SPEED_LEVELS[currentSpeed].max;
+          ball.vx = clampSpeed(ball.vx * scale, maxSpeed);
+          ball.vy = clampSpeed(ball.vy * scale, maxSpeed);
+        }
+      }
+    }
+    const key = e.key.toLowerCase();
+    if (key === 'a' || key === 'b' || key === 'c') {
+      currentAILevel = key;
+      updateAIIndicator();
+    }
   });
 
+  // Change cursor to pointer over canvas
+  canvas.style.cursor = 'none';
+
   spawnBall('player');
+  updateSpeedIndicator();
+  updateAIIndicator();
   drawFrame();
-  showMessage('Press any key to start');
+  showMessage('Click to start');
 }
 
 function spawnBall(serveToward) {
   const dir = serveToward === 'ai' ? 1 : -1;
-  const angle = (Math.random() * 0.6 - 0.3); // radians, slight variance
+  const angle = (Math.random() * 0.6 - 0.3);
+  const speed = SPEED_LEVELS[currentSpeed].init;
   ball = {
     x: canvas.width / 2,
     y: canvas.height / 2,
-    vx: dir * BALL_SPEED_INIT * Math.cos(angle),
-    vy: BALL_SPEED_INIT * Math.sin(angle) + (Math.random() > 0.5 ? 1 : -1) * 2,
+    vx: dir * speed * Math.cos(angle),
+    vy: speed * Math.sin(angle) + (Math.random() > 0.5 ? 1 : -1) * 2,
   };
+}
+
+function updateSpeedIndicator() {
+  const el = document.getElementById('speed-indicator');
+  if (el) el.textContent = `Speed: ${currentSpeed} — ${SPEED_LEVELS[currentSpeed].label}`;
+}
+
+function updateAIIndicator() {
+  const el = document.getElementById('ai-indicator');
+  const lvl = AI_LEVELS[currentAILevel];
+  if (el) el.textContent = `AI: ${currentAILevel.toUpperCase()} — ${lvl.label}`;
 }
 
 function startGame() {
@@ -89,27 +149,46 @@ function updateScoreboard() {
 }
 
 function updatePlayer() {
-  if (keys['ArrowUp'] && playerPaddle.y > 0) {
-    playerPaddle.y -= PADDLE_SPEED;
-  }
-  if (keys['ArrowDown'] && playerPaddle.y + PADDLE_H < canvas.height) {
-    playerPaddle.y += PADDLE_SPEED;
-  }
+  // Center paddle on mouse position, clamped within canvas
+  const targetY = mouseY - PADDLE_H / 2;
+  playerPaddle.y = Math.max(0, Math.min(canvas.height - PADDLE_H, targetY));
 }
 
 function updateAI() {
   const paddleCenter = aiPaddle.y + PADDLE_H / 2;
-  // AI tracks the ball with a small deadzone to feel beatable
-  const deadzone = 8;
-  if (paddleCenter < ball.y - deadzone && aiPaddle.y + PADDLE_H < canvas.height) {
-    aiPaddle.y += AI_SPEED;
-  } else if (paddleCenter > ball.y + deadzone && aiPaddle.y > 0) {
-    aiPaddle.y -= AI_SPEED;
+  const lvl = AI_LEVELS[currentAILevel];
+  const aiSpeed = SPEED_LEVELS[currentSpeed].init * lvl.multiplier;
+  if (paddleCenter < ball.y - lvl.deadzone && aiPaddle.y + PADDLE_H < canvas.height) {
+    aiPaddle.y += aiSpeed;
+  } else if (paddleCenter > ball.y + lvl.deadzone && aiPaddle.y > 0) {
+    aiPaddle.y -= aiSpeed;
   }
 }
 
 function clampSpeed(val, max) {
   return Math.sign(val) * Math.min(Math.abs(val), max);
+}
+
+// Continuous collision detection: check if ball swept through a paddle this frame
+function sweepPaddle(paddle, prevX, prevY) {
+  // Vertical overlap check uses interpolated Y position at the paddle's X boundary
+  const halfBall = BALL_SIZE / 2;
+
+  // Determine the X edge of the paddle the ball approaches
+  const edgeX = ball.vx < 0 ? paddle.x + paddle.w : paddle.x;
+
+  // Check if ball crossed the edge X during this frame
+  const crossedEdge = ball.vx < 0
+    ? prevX - halfBall >= edgeX && ball.x - halfBall <= edgeX
+    : prevX + halfBall <= edgeX && ball.x + halfBall >= edgeX;
+
+  if (!crossedEdge) return false;
+
+  // Interpolate Y at crossing point
+  const t = (edgeX - (ball.vx < 0 ? prevX - halfBall : prevX + halfBall)) / ball.vx;
+  const interpY = prevY + ball.vy * t;
+
+  return interpY + halfBall > paddle.y && interpY - halfBall < paddle.y + paddle.h;
 }
 
 function collidesWithPaddle(paddle) {
@@ -122,6 +201,9 @@ function collidesWithPaddle(paddle) {
 }
 
 function updateBall() {
+  const prevX = ball.x;
+  const prevY = ball.y;
+
   ball.x += ball.vx;
   ball.y += ball.vy;
 
@@ -135,24 +217,26 @@ function updateBall() {
     ball.vy = -Math.abs(ball.vy);
   }
 
-  // Player paddle collision
-  if (collidesWithPaddle(playerPaddle) && ball.vx < 0) {
+  // Player paddle collision (standard + sweep for tunneling)
+  if (ball.vx < 0 && (collidesWithPaddle(playerPaddle) || sweepPaddle(playerPaddle, prevX, prevY))) {
+    const maxSpeed = SPEED_LEVELS[currentSpeed].max;
     ball.x = playerPaddle.x + PADDLE_W + BALL_SIZE / 2;
-    const hitPos = (ball.y - (playerPaddle.y + PADDLE_H / 2)) / (PADDLE_H / 2); // -1 to 1
+    const hitPos = (ball.y - (playerPaddle.y + PADDLE_H / 2)) / (PADDLE_H / 2);
     ball.vx = Math.abs(ball.vx) * 1.05;
     ball.vy = hitPos * 7;
-    ball.vx = clampSpeed(ball.vx, MAX_BALL_SPEED);
-    ball.vy = clampSpeed(ball.vy, MAX_BALL_SPEED);
+    ball.vx = clampSpeed(ball.vx, maxSpeed);
+    ball.vy = clampSpeed(ball.vy, maxSpeed);
   }
 
-  // AI paddle collision
-  if (collidesWithPaddle(aiPaddle) && ball.vx > 0) {
+  // AI paddle collision (standard + sweep for tunneling)
+  if (ball.vx > 0 && (collidesWithPaddle(aiPaddle) || sweepPaddle(aiPaddle, prevX, prevY))) {
+    const maxSpeed = SPEED_LEVELS[currentSpeed].max;
     ball.x = aiPaddle.x - BALL_SIZE / 2;
     const hitPos = (ball.y - (aiPaddle.y + PADDLE_H / 2)) / (PADDLE_H / 2);
     ball.vx = -Math.abs(ball.vx) * 1.05;
     ball.vy = hitPos * 7;
-    ball.vx = clampSpeed(ball.vx, MAX_BALL_SPEED);
-    ball.vy = clampSpeed(ball.vy, MAX_BALL_SPEED);
+    ball.vx = clampSpeed(ball.vx, maxSpeed);
+    ball.vy = clampSpeed(ball.vy, maxSpeed);
   }
 
   // Scoring — ball leaves left side
@@ -174,7 +258,7 @@ function checkWin(winner) {
   if (score[winner] >= WINNING_SCORE) {
     gameRunning = false;
     const msg = winner === 'player' ? 'YOU WIN! 🎉' : 'AI WINS!';
-    showMessage(`${msg}  —  Press any key to play again`);
+    showMessage(`${msg}  —  Click to play again`);
     return true;
   }
   return false;
@@ -184,7 +268,7 @@ function pauseAndServe(serveToward) {
   gameRunning = false;
   spawnBall(serveToward);
   drawFrame();
-  showMessage('Press any key to continue');
+  showMessage('Click to continue');
 }
 
 function drawFrame() {

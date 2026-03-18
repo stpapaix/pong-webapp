@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pong</title>
+  <title>Steph Pong</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>PONG</h1>
+  <h1>STEPH PONG</h1>
   <div id="scoreboard">
     <span id="player-score">0</span>
     <span class="divider">:</span>
@@ -19,7 +19,11 @@
   </div>
   <canvas id="gameCanvas" width="800" height="500"></canvas>
   <div id="message" class="hidden"></div>
-  <p class="hint">Use <strong>↑ ↓</strong> arrow keys to move your paddle</p>
+  <div class="indicators">
+    <div id="speed-indicator" class="speed"></div>
+    <div id="ai-indicator" class="ai-level"></div>
+  </div>
+  <p class="hint">Move <strong>mouse</strong> to play &mdash; <strong>click</strong> to start &mdash; <strong>1&ndash;5</strong> speed &mdash; <strong>A/B/C</strong> AI level</p>
   <script src="game.js"></script>
 </body>
 </html>

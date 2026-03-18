@@ -1,23 +1,26 @@
-# 🏓 Pong Web App
+# 🏓 Steph Pong
 
 A classic Pong game (Player vs AI) built with HTML5 Canvas and deployed on **Azure Static Web Apps** with full CI/CD automation via GitHub Actions.
 
 ## 🎮 Play the Game
 
-> **[▶ Play Online](https://pong-webapp.azurestaticapps.net)**
+> **[▶ Play Online](https://brave-rock-06d80bc0f.6.azurestaticapps.net/)**
 
 ## Controls
 
-| Key | Action |
-|-----|--------|
-| `↑` Arrow Up | Move paddle up |
-| `↓` Arrow Down | Move paddle down |
-| Any key | Start / serve / restart |
+| Input | Action |
+|-------|--------|
+| Mouse move | Control your paddle |
+| Left click | Start / continue / restart |
+| `1` – `5` | Change ball speed |
+| `A` | AI level: Beginner |
+| `B` | AI level: Normal (default) |
+| `C` | AI level: Professional |
 
 - You are the **white paddle** (left side)
 - The AI is the **red paddle** (right side)
 - First to **7 points** wins
-- Ball speeds up on every paddle hit
+- Ball speeds up on every paddle hit (capped per speed level)
 
 ## Tech Stack
 
@@ -48,9 +51,12 @@ pong-webapp/
 
 ### Game Logic (`game.js`)
 - **Game loop** powered by `requestAnimationFrame`
+- **Mouse control**: paddle follows the mouse cursor in real time; left click to start
 - **Ball physics**: bounces off walls, accelerates on each paddle hit (capped at max speed)
 - **Angle control**: hit position on paddle affects the ball's rebound angle
-- **AI**: tracks the ball with a small deadzone to remain beatable
+- **CCD (Continuous Collision Detection)**: prevents ball from tunneling through paddles at high speed
+- **5 ball speed levels** (keys `1`–`5`): from Very Slow to Very Fast, applied instantly including mid-game
+- **3 AI difficulty levels** (keys `A`/`B`/`C`): Beginner, Normal, Professional — AI speed and reaction deadzone scale accordingly
 - **Scoring**: first to 7 points wins
 
 ### Infrastructure (`infra/main.bicep`)
@@ -119,7 +125,3 @@ start index.html
 ```
 
 Or use the **Live Server** extension in VS Code.
-
-## License
-
-MIT
