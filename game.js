@@ -61,7 +61,7 @@ const AI_LEVELS = {
 };
 
 // Game state
-let ball, playerPaddle, aiPaddle, score, mouseY, gameRunning, animationId, currentSpeed, currentAILevel;
+let ball, playerPaddle, aiPaddle, score, mouseY, gameRunning, animationId, currentSpeed, currentAILevel, autoPlayer;
 
 function init() {
   playerPaddle = {
@@ -83,6 +83,7 @@ function init() {
   gameRunning = false;
   currentSpeed = 3;    // default: Medium
   currentAILevel = 'b'; // default: Normal
+  autoPlayer = false;  // default: user controls left paddle
 
   // Pointer Lock: track mouse movement delta while locked
   document.addEventListener('pointerlockchange', () => {
@@ -118,7 +119,7 @@ function init() {
     }
   });
 
-  // Keyboard: SPACE = start/continue, ESC = exit, 1-5 = speed, A/B/C = AI level
+  // Keyboard: SPACE = start/continue, ESC = exit, 0 = toggle AI vs AI, 1-5 = speed, A/B/C = AI level
   document.addEventListener('keydown', (e) => {
     if (e.code === 'Escape') {
       exitGame();
@@ -132,6 +133,15 @@ function init() {
         } else {
           startGame();
         }
+      }
+      return;
+    }
+    if (e.key === '0') {
+      autoPlayer = !autoPlayer;
+      updateAutoPlayerIndicator();
+      // Release / request pointer lock depending on mode
+      if (autoPlayer && document.pointerLockElement === canvas) {
+        document.exitPointerLock();
       }
       return;
     }
@@ -164,6 +174,7 @@ function init() {
   spawnBall('player');
   updateSpeedIndicator();
   updateAIIndicator();
+  updateAutoPlayerIndicator();
   drawFrame();
   showMessage('Click or press SPACE to start');
 }
@@ -189,6 +200,11 @@ function updateAIIndicator() {
   const el = document.getElementById('ai-indicator');
   const lvl = AI_LEVELS[currentAILevel];
   if (el) el.textContent = `AI: ${currentAILevel.toUpperCase()} — ${lvl.label}`;
+}
+
+function updateAutoPlayerIndicator() {
+  const el = document.getElementById('mode-indicator');
+  if (el) el.textContent = autoPlayer ? 'Mode: AI vs AI' : 'Mode: Player vs AI';
 }
 
 function startGame() {
@@ -230,9 +246,21 @@ function updateScoreboard() {
 }
 
 function updatePlayer() {
-  // Center paddle on mouse position, clamped within canvas
-  const targetY = mouseY - PADDLE_H / 2;
-  playerPaddle.y = Math.max(0, Math.min(canvas.height - PADDLE_H, targetY));
+  if (autoPlayer) {
+    // Left paddle controlled by AI (same logic as right paddle)
+    const paddleCenter = playerPaddle.y + PADDLE_H / 2;
+    const lvl = AI_LEVELS[currentAILevel];
+    const aiSpeed = SPEED_LEVELS[currentSpeed].init * lvl.multiplier;
+    if (paddleCenter < ball.y - lvl.deadzone && playerPaddle.y + PADDLE_H < canvas.height) {
+      playerPaddle.y += aiSpeed;
+    } else if (paddleCenter > ball.y + lvl.deadzone && playerPaddle.y > 0) {
+      playerPaddle.y -= aiSpeed;
+    }
+  } else {
+    // Normal: center paddle on mouse position
+    const targetY = mouseY - PADDLE_H / 2;
+    playerPaddle.y = Math.max(0, Math.min(canvas.height - PADDLE_H, targetY));
+  }
 }
 
 function updateAI() {

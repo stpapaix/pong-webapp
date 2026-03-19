@@ -14,6 +14,7 @@ This project was developed using Vibe Coding with GitHub Copilot (Claude Sonnet 
 | Mouse move | Control your paddle (captured by game during play) |
 | Click / `SPACE` | Start / continue / restart |
 | `ESC` | Exit game and release mouse |
+| `0` | Toggle **AI vs AI** mode (watch AI play itself) / back to **Player vs AI** |
 | `1` – `5` | Change ball speed (applied instantly, even mid-game) |
 | `A` | AI level: Beginner |
 | `B` | AI level: Normal (default) |
@@ -23,7 +24,7 @@ This project was developed using Vibe Coding with GitHub Copilot (Claude Sonnet 
 - The AI is the **red paddle** (right side)
 - First to **7 points** wins
 - Ball speeds up on every paddle hit (capped per speed level)
-- Current speed and AI level are displayed below the canvas
+- Current mode, speed and AI level are displayed below the canvas
 
 ## Tech Stack
 
@@ -56,6 +57,7 @@ pong-webapp/
 - **Game loop** powered by `requestAnimationFrame`
 - **Mouse control with Pointer Lock**: mouse is captured by the game on start — no risk of losing control when cursor leaves the window. Released automatically on game end or `ESC`
 - **SPACE / click** to start or continue; **ESC** to exit and return mouse to desktop
+- **AI vs AI mode** (key `0`): toggles left paddle between user control and AI control — watch the AI play itself. Mouse is released when this mode is active
 - **Ball physics**: bounces off walls, accelerates on each paddle hit (capped at max speed per level)
 - **Angle control**: hit position on paddle affects the ball's rebound angle
 - **CCD (Continuous Collision Detection)**: prevents ball from tunneling through paddles at high speed
