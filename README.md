@@ -63,7 +63,7 @@ pong-webapp/
 - **Angle control**: hit position on paddle affects the ball's rebound angle
 - **CCD (Continuous Collision Detection)**: prevents ball from tunneling through paddles at high speed
 - **5 ball speed levels** (keys `1`–`5`): Very Slow to Very Fast, applied instantly including mid-game
-- **3 AI difficulty levels** (keys `A`/`B`/`C`): Beginner, Normal, Professional — paddle speed is **fixed per level** (independent of ball speed): 3 / 5 / 7 px per frame, with a decreasing reaction deadzone
+- **3 AI difficulty levels** (keys `A`/`B`/`C`): Beginner, Normal, Professional — paddle speed is **fixed per level** (independent of ball speed): 3.75 / 6.25 / 8.75 px per frame, with a decreasing reaction deadzone
 - **Retro sound effects** (Web Audio API — no audio files): paddle hit, wall bounce, score, win/lose jingles
 - **Scoring**: first to 7 points wins
 

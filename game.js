@@ -55,9 +55,9 @@ const SPEED_LEVELS = {
 
 // AI levels: fixed paddle speed (px/frame, independent of ball speed), deadzone, label
 const AI_LEVELS = {
-  a: { speed: 3,  deadzone: 20, label: 'Beginner'     },
-  b: { speed: 5,  deadzone: 8,  label: 'Normal'       },
-  c: { speed: 7,  deadzone: 2,  label: 'Professional' },
+  a: { speed: 3.75, deadzone: 20, label: 'Beginner'     },
+  b: { speed: 6.25, deadzone: 8,  label: 'Normal'       },
+  c: { speed: 8.75, deadzone: 2,  label: 'Professional' },
 };
 
 // Game state
