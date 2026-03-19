@@ -53,11 +53,11 @@ const SPEED_LEVELS = {
   5: { init: 10, max: 22, label: 'Very Fast' },
 };
 
-// AI levels: speedMultiplier (applied to ball speed), deadzone, label
+// AI levels: fixed paddle speed (px/frame, independent of ball speed), deadzone, label
 const AI_LEVELS = {
-  a: { multiplier: 0.55, deadzone: 20, label: 'Beginner'     },
-  b: { multiplier: 0.80, deadzone: 8,  label: 'Normal'       },
-  c: { multiplier: 1.10, deadzone: 2,  label: 'Professional' },
+  a: { speed: 3,  deadzone: 20, label: 'Beginner'     },
+  b: { speed: 5,  deadzone: 8,  label: 'Normal'       },
+  c: { speed: 7,  deadzone: 2,  label: 'Professional' },
 };
 
 // Game state
@@ -255,7 +255,7 @@ function updatePlayer() {
     // Left paddle controlled by AI (same logic as right paddle)
     const paddleCenter = playerPaddle.y + PADDLE_H / 2;
     const lvl = AI_LEVELS[currentAILevel];
-    const aiSpeed = SPEED_LEVELS[currentSpeed].init * lvl.multiplier;
+    const aiSpeed = lvl.speed;
     if (paddleCenter < ball.y - lvl.deadzone && playerPaddle.y + PADDLE_H < canvas.height) {
       playerPaddle.y += aiSpeed;
     } else if (paddleCenter > ball.y + lvl.deadzone && playerPaddle.y > 0) {
@@ -273,7 +273,7 @@ function updateAI() {
   const prevY = aiPaddle.y;
   const paddleCenter = aiPaddle.y + PADDLE_H / 2;
   const lvl = AI_LEVELS[currentAILevel];
-  let aiSpeed = SPEED_LEVELS[currentSpeed].init * lvl.multiplier;
+  let aiSpeed = lvl.speed;
   let targetY = ball.y;
 
   // Professional AI: deliberately swing paddle to maximise velocity transfer on impact
