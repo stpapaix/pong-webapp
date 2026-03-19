@@ -14,7 +14,7 @@ This project was developed using Vibe Coding with GitHub Copilot (Claude Sonnet 
 | Mouse move | Control your paddle (captured by game during play) |
 | Click / `SPACE` | Start / continue / restart |
 | `ESC` | Exit game and release mouse |
-| `0` | Toggle **AI vs AI** mode (watch AI play itself) / back to **Player vs AI** |
+| `0` | Toggle **Manual → AI** (AI vs AI mode) / back to **Player vs AI** |
 | `1` – `5` | Change ball speed (applied instantly, even mid-game) |
 | `A` | AI level: Beginner |
 | `B` | AI level: Normal (default) |
