@@ -79,6 +79,12 @@ canvas {
   justify-content: center;
 }
 
+.mode {
+  font-size: 0.85rem;
+  color: #af4;
+  letter-spacing: 0.15rem;
+}
+
 .speed {
   font-size: 0.85rem;
   color: #4af;
