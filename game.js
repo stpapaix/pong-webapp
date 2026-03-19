@@ -62,6 +62,8 @@ const AI_LEVELS = {
 
 // Game state
 let ball, playerPaddle, aiPaddle, score, mouseY, gameRunning, animationId, currentSpeed, currentAILevel, autoPlayer, intentionalUnlock;
+let playerPaddleVelY = 0; // tracks player paddle vertical velocity for ball effect
+let aiPaddleVelY = 0;     // tracks AI paddle vertical velocity for ball effect
 
 function init() {
   playerPaddle = {
@@ -248,6 +250,7 @@ function updateScoreboard() {
 }
 
 function updatePlayer() {
+  const prevY = playerPaddle.y;
   if (autoPlayer) {
     // Left paddle controlled by AI (same logic as right paddle)
     const paddleCenter = playerPaddle.y + PADDLE_H / 2;
@@ -263,9 +266,11 @@ function updatePlayer() {
     const targetY = mouseY - PADDLE_H / 2;
     playerPaddle.y = Math.max(0, Math.min(canvas.height - PADDLE_H, targetY));
   }
+  playerPaddleVelY = playerPaddle.y - prevY;
 }
 
 function updateAI() {
+  const prevY = aiPaddle.y;
   const paddleCenter = aiPaddle.y + PADDLE_H / 2;
   const lvl = AI_LEVELS[currentAILevel];
   const aiSpeed = SPEED_LEVELS[currentSpeed].init * lvl.multiplier;
@@ -274,6 +279,7 @@ function updateAI() {
   } else if (paddleCenter > ball.y + lvl.deadzone && aiPaddle.y > 0) {
     aiPaddle.y -= aiSpeed;
   }
+  aiPaddleVelY = aiPaddle.y - prevY;
 }
 
 function clampSpeed(val, max) {
@@ -337,6 +343,7 @@ function updateBall() {
     const hitPos = (ball.y - (playerPaddle.y + PADDLE_H / 2)) / (PADDLE_H / 2);
     ball.vx = Math.abs(ball.vx) * 1.05;
     ball.vy = hitPos * 7;
+    ball.vy += playerPaddleVelY * 0.6; // transfer paddle motion to ball
     ball.vx = clampSpeed(ball.vx, maxSpeed);
     ball.vy = clampSpeed(ball.vy, maxSpeed);
     SFX.paddleHit();
@@ -349,6 +356,7 @@ function updateBall() {
     const hitPos = (ball.y - (aiPaddle.y + PADDLE_H / 2)) / (PADDLE_H / 2);
     ball.vx = -Math.abs(ball.vx) * 1.05;
     ball.vy = hitPos * 7;
+    ball.vy += aiPaddleVelY * 0.6; // transfer paddle motion to ball
     ball.vx = clampSpeed(ball.vx, maxSpeed);
     ball.vy = clampSpeed(ball.vy, maxSpeed);
     SFX.paddleHit();
