@@ -405,11 +405,11 @@ function drawFrame() {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // Player paddle
-  ctx.fillStyle = '#fff';
+  // Player paddle: white when user-controlled, green when AI-controlled
+  ctx.fillStyle = autoPlayer ? '#4f4' : '#fff';
   ctx.fillRect(playerPaddle.x, playerPaddle.y, PADDLE_W, PADDLE_H);
 
-  // AI paddle
+  // AI paddle (right): always red
   ctx.fillStyle = '#f66';
   ctx.fillRect(aiPaddle.x, aiPaddle.y, PADDLE_W, PADDLE_H);
 

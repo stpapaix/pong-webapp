@@ -20,7 +20,7 @@ This project was developed using Vibe Coding with GitHub Copilot (Claude Sonnet 
 | `B` | AI level: Normal (default) |
 | `C` | AI level: Professional |
 
-- You are the **white paddle** (left side)
+- You are the **white paddle** (left) — turns **green** when AI vs AI mode is active
 - The AI is the **red paddle** (right side)
 - First to **7 points** wins
 - Ball speeds up on every paddle hit (capped per speed level)
