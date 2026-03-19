@@ -61,7 +61,7 @@ const AI_LEVELS = {
 };
 
 // Game state
-let ball, playerPaddle, aiPaddle, score, mouseY, gameRunning, animationId, currentSpeed, currentAILevel, autoPlayer;
+let ball, playerPaddle, aiPaddle, score, mouseY, gameRunning, animationId, currentSpeed, currentAILevel, autoPlayer, intentionalUnlock;
 
 function init() {
   playerPaddle = {
@@ -84,13 +84,15 @@ function init() {
   currentSpeed = 3;    // default: Medium
   currentAILevel = 'b'; // default: Normal
   autoPlayer = false;  // default: user controls left paddle
+  intentionalUnlock = false;
 
   // Pointer Lock: track mouse movement delta while locked
   document.addEventListener('pointerlockchange', () => {
-    if (document.pointerLockElement !== canvas && gameRunning) {
+    if (document.pointerLockElement !== canvas && gameRunning && !intentionalUnlock) {
       // Pointer lock lost unexpectedly — exit game cleanly
       exitGame();
     }
+    intentionalUnlock = false;
   });
 
   canvas.addEventListener('mousemove', (e) => {
@@ -139,8 +141,8 @@ function init() {
     if (e.key === '0') {
       autoPlayer = !autoPlayer;
       updateAutoPlayerIndicator();
-      // Release / request pointer lock depending on mode
       if (autoPlayer && document.pointerLockElement === canvas) {
+        intentionalUnlock = true;
         document.exitPointerLock();
       }
       return;
