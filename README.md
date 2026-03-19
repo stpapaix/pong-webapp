@@ -85,11 +85,11 @@ const prevY = paddle.y;
 paddleVelY = paddle.y - prevY;  // pixels moved this frame
 ```
 
-On collision, this velocity is mixed into the ball's Y speed with a **damping factor of 0.6** to keep it controllable, then clamped to the current max speed:
+On collision, this velocity is mixed into the ball's Y speed with a **damping factor of 0.8** to keep it controllable, then clamped to the current max speed:
 
 ```js
 ball.vy = hitPos * 7;        // base angle from contact point
-ball.vy += paddleVelY * 0.6; // add paddle motion (damped)
+ball.vy += paddleVelY * 0.8; // add paddle motion (damped)
 ball.vy = clamp(ball.vy, maxSpeed);
 ```
 
@@ -135,6 +135,15 @@ ball.vy = clamp(ball.vy, maxSpeed);
 | Moving **up** | Ball gains extra **upward** momentum |
 
 Applies to **both** player and AI paddles — making every rally dynamic.
+
+### Professional AI (level C) and paddle swing
+
+In **Professional** mode, the AI actively exploits velocity transfer as a weapon. When the ball crosses the halfway line heading toward its paddle, the AI:
+
+1. **Overshoots the tracking target** — instead of centering the ball on the paddle, it aims the paddle *edge* at the ball, guaranteeing the paddle is still in motion at the moment of contact.
+2. **Boosts its movement speed ×1.3** to generate higher paddle velocity and therefore a stronger spin on the ball.
+
+The result is an intentional curve on every return shot, making the AI's attacks significantly harder to predict and return at high difficulty.
 
 ---
 

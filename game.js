@@ -273,10 +273,19 @@ function updateAI() {
   const prevY = aiPaddle.y;
   const paddleCenter = aiPaddle.y + PADDLE_H / 2;
   const lvl = AI_LEVELS[currentAILevel];
-  const aiSpeed = SPEED_LEVELS[currentSpeed].init * lvl.multiplier;
-  if (paddleCenter < ball.y - lvl.deadzone && aiPaddle.y + PADDLE_H < canvas.height) {
+  let aiSpeed = SPEED_LEVELS[currentSpeed].init * lvl.multiplier;
+  let targetY = ball.y;
+
+  // Professional AI: deliberately swing paddle to maximise velocity transfer on impact
+  if (currentAILevel === 'c' && ball.vx > 0 && ball.x > canvas.width / 2) {
+    const swingDir = ball.y < paddleCenter ? -1 : 1; // aim edge of paddle at ball
+    targetY = ball.y + swingDir * PADDLE_H * 0.4;    // overshoot so paddle still moves at contact
+    aiSpeed *= 1.3;                                   // move faster for higher velocity at impact
+  }
+
+  if (paddleCenter < targetY - lvl.deadzone && aiPaddle.y + PADDLE_H < canvas.height) {
     aiPaddle.y += aiSpeed;
-  } else if (paddleCenter > ball.y + lvl.deadzone && aiPaddle.y > 0) {
+  } else if (paddleCenter > targetY + lvl.deadzone && aiPaddle.y > 0) {
     aiPaddle.y -= aiSpeed;
   }
   aiPaddleVelY = aiPaddle.y - prevY;
@@ -343,7 +352,7 @@ function updateBall() {
     const hitPos = (ball.y - (playerPaddle.y + PADDLE_H / 2)) / (PADDLE_H / 2);
     ball.vx = Math.abs(ball.vx) * 1.05;
     ball.vy = hitPos * 7;
-    ball.vy += playerPaddleVelY * 0.6; // transfer paddle motion to ball
+    ball.vy += playerPaddleVelY * 0.8; // transfer paddle motion to ball
     ball.vx = clampSpeed(ball.vx, maxSpeed);
     ball.vy = clampSpeed(ball.vy, maxSpeed);
     SFX.paddleHit();
@@ -356,7 +365,7 @@ function updateBall() {
     const hitPos = (ball.y - (aiPaddle.y + PADDLE_H / 2)) / (PADDLE_H / 2);
     ball.vx = -Math.abs(ball.vx) * 1.05;
     ball.vy = hitPos * 7;
-    ball.vy += aiPaddleVelY * 0.6; // transfer paddle motion to ball
+    ball.vy += aiPaddleVelY * 0.8; // transfer paddle motion to ball
     ball.vx = clampSpeed(ball.vx, maxSpeed);
     ball.vy = clampSpeed(ball.vy, maxSpeed);
     SFX.paddleHit();
