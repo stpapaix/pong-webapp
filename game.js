@@ -53,15 +53,17 @@ const SPEED_LEVELS = {
   5: { init: 10, max: 22, label: 'Very Fast' },
 };
 
-// AI levels: speedMultiplier (applied to ball speed), deadzone, label
+// AI levels: fixed paddle speed (px/frame, independent of ball speed), deadzone, label
 const AI_LEVELS = {
-  a: { multiplier: 0.55, deadzone: 20, label: 'Beginner'     },
-  b: { multiplier: 0.80, deadzone: 8,  label: 'Normal'       },
-  c: { multiplier: 1.10, deadzone: 2,  label: 'Professional' },
+  a: { speed: 3.75, deadzone: 20, label: 'Beginner'     },
+  b: { speed: 6.25, deadzone: 8,  label: 'Normal'       },
+  c: { speed: 8.75, deadzone: 2,  label: 'Professional' },
 };
 
 // Game state
 let ball, playerPaddle, aiPaddle, score, mouseY, gameRunning, animationId, currentSpeed, currentAILevel, autoPlayer, intentionalUnlock;
+let playerPaddleVelY = 0; // tracks player paddle vertical velocity for ball effect
+let aiPaddleVelY = 0;     // tracks AI paddle vertical velocity for ball effect
 
 function init() {
   playerPaddle = {
@@ -248,11 +250,12 @@ function updateScoreboard() {
 }
 
 function updatePlayer() {
+  const prevY = playerPaddle.y;
   if (autoPlayer) {
     // Left paddle controlled by AI (same logic as right paddle)
     const paddleCenter = playerPaddle.y + PADDLE_H / 2;
     const lvl = AI_LEVELS[currentAILevel];
-    const aiSpeed = SPEED_LEVELS[currentSpeed].init * lvl.multiplier;
+    const aiSpeed = lvl.speed;
     if (paddleCenter < ball.y - lvl.deadzone && playerPaddle.y + PADDLE_H < canvas.height) {
       playerPaddle.y += aiSpeed;
     } else if (paddleCenter > ball.y + lvl.deadzone && playerPaddle.y > 0) {
@@ -263,17 +266,29 @@ function updatePlayer() {
     const targetY = mouseY - PADDLE_H / 2;
     playerPaddle.y = Math.max(0, Math.min(canvas.height - PADDLE_H, targetY));
   }
+  playerPaddleVelY = playerPaddle.y - prevY;
 }
 
 function updateAI() {
+  const prevY = aiPaddle.y;
   const paddleCenter = aiPaddle.y + PADDLE_H / 2;
   const lvl = AI_LEVELS[currentAILevel];
-  const aiSpeed = SPEED_LEVELS[currentSpeed].init * lvl.multiplier;
-  if (paddleCenter < ball.y - lvl.deadzone && aiPaddle.y + PADDLE_H < canvas.height) {
+  let aiSpeed = lvl.speed;
+  let targetY = ball.y;
+
+  // Professional AI: deliberately swing paddle to maximise velocity transfer on impact
+  if (currentAILevel === 'c' && ball.vx > 0 && ball.x > canvas.width / 2) {
+    const swingDir = ball.y < paddleCenter ? -1 : 1; // aim edge of paddle at ball
+    targetY = ball.y + swingDir * PADDLE_H * 0.4;    // overshoot so paddle still moves at contact
+    aiSpeed *= 1.3;                                   // move faster for higher velocity at impact
+  }
+
+  if (paddleCenter < targetY - lvl.deadzone && aiPaddle.y + PADDLE_H < canvas.height) {
     aiPaddle.y += aiSpeed;
-  } else if (paddleCenter > ball.y + lvl.deadzone && aiPaddle.y > 0) {
+  } else if (paddleCenter > targetY + lvl.deadzone && aiPaddle.y > 0) {
     aiPaddle.y -= aiSpeed;
   }
+  aiPaddleVelY = aiPaddle.y - prevY;
 }
 
 function clampSpeed(val, max) {
@@ -337,6 +352,7 @@ function updateBall() {
     const hitPos = (ball.y - (playerPaddle.y + PADDLE_H / 2)) / (PADDLE_H / 2);
     ball.vx = Math.abs(ball.vx) * 1.05;
     ball.vy = hitPos * 7;
+    ball.vy += playerPaddleVelY * 0.8; // transfer paddle motion to ball
     ball.vx = clampSpeed(ball.vx, maxSpeed);
     ball.vy = clampSpeed(ball.vy, maxSpeed);
     SFX.paddleHit();
@@ -349,6 +365,7 @@ function updateBall() {
     const hitPos = (ball.y - (aiPaddle.y + PADDLE_H / 2)) / (PADDLE_H / 2);
     ball.vx = -Math.abs(ball.vx) * 1.05;
     ball.vy = hitPos * 7;
+    ball.vy += aiPaddleVelY * 0.8; // transfer paddle motion to ball
     ball.vx = clampSpeed(ball.vx, maxSpeed);
     ball.vy = clampSpeed(ball.vy, maxSpeed);
     SFX.paddleHit();
